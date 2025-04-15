@@ -98,7 +98,7 @@ def git_commit(repo: git.Repo, message: str) -> str:
     
     # Create a signed commit: using Git's -S flag via GitPython's git command runner.
     # (Make sure your repository is configured for GPG signing.)
-    repo.git.commit("-S", "-m", message)
+    repo.index.git.commit(message, sign=True)
     
     # After the commit, repo.head.commit refers to the new commit.
     commit_hash = repo.head.commit.hexsha
