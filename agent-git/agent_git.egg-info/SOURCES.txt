@@ -1,8 +1,0 @@
-README.md
-main.py
-pyproject.toml
-agent_git.egg-info/PKG-INFO
-agent_git.egg-info/SOURCES.txt
-agent_git.egg-info/dependency_links.txt
-agent_git.egg-info/requires.txt
-agent_git.egg-info/top_level.txt
