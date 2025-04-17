@@ -192,7 +192,7 @@ def git_commit_direct(
         
         # Set author and committer information
         agent_email = user_email
-        agent_full_name = f"MCP Agent ({agent_name}) on Behalf Of {user_name}"
+        agent_full_name = f"{agent_name} Agent on behalf of {user_name}"
         
         # Create environment variables for git
         env = os.environ.copy()
