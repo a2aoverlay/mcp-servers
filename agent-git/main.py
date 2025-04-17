@@ -173,7 +173,8 @@ def git_commit_direct(
     message: str, 
     agent_name: str = "Claude", 
     user_name: str = "Andor", 
-    user_email: str = "andor@andor.us"
+    user_email: str = "andor@andor.us",
+    custom_name_format: Optional[str] = None
 ) -> str:
     """Record changes with a commit. 
     
@@ -183,6 +184,7 @@ def git_commit_direct(
         agent_name: Name of the agent making the commit (default: "Claude")
         user_name: Name of the user on whose behalf the commit is made (default: "Andor")
         user_email: Email to use for the commit (default: "andor@andor.us")
+        custom_name_format: Optional custom format for committer name (must include {agent_name} and {user_name})
     """
     try:
         validate_repo(repo_path)
@@ -192,7 +194,18 @@ def git_commit_direct(
         
         # Set author and committer information
         agent_email = user_email
-        agent_full_name = f"{agent_name} Agent on behalf of {user_name}"
+        
+        # Use custom format if provided, otherwise use default
+        if custom_name_format:
+            # Ensure the custom format includes both agent_name and user_name
+            if "{agent_name}" not in custom_name_format or "{user_name}" not in custom_name_format:
+                raise ValueError("Custom name format must include {agent_name} and {user_name}")
+            agent_full_name = custom_name_format.format(agent_name=agent_name, user_name=user_name)
+        else:
+            # Default format
+            agent_full_name = f"{agent_name} Agent on behalf of {user_name}"
+        
+        logger.info(f"Committing as: {agent_full_name}")
         
         # Create environment variables for git
         env = os.environ.copy()
@@ -235,7 +248,8 @@ def git_commit(
     message: str, 
     agent_name: str = "Claude", 
     user_name: str = "Andor", 
-    user_email: str = "andor@andor.us"
+    user_email: str = "andor@andor.us",
+    custom_name_format: Optional[str] = None
 ) -> str:
     """Record changes with a commit (redirect to git_commit_direct).
     
@@ -245,8 +259,9 @@ def git_commit(
         agent_name: Name of the agent making the commit (default: "Claude")
         user_name: Name of the user on whose behalf the commit is made (default: "Andor")
         user_email: Email to use for the commit (default: "andor@andor.us")
+        custom_name_format: Optional custom format for committer name (must include {agent_name} and {user_name})
     """
-    return git_commit_direct(repo_path, message, agent_name, user_name, user_email)
+    return git_commit_direct(repo_path, message, agent_name, user_name, user_email, custom_name_format)
 
 
 @mcp.tool()
