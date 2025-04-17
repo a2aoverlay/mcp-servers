@@ -350,6 +350,46 @@ def git_push(repo_path: str, remote: str = "origin", branch: Optional[str] = Non
         return f"Error pushing to remote: {str(e)}"
 
 
+@mcp.tool()
+def git_push_commit(repo_path: str, commit_hash: str, remote: str = "origin", branch: Optional[str] = None) -> str:
+    """Push a specific commit to remote repository.
+    
+    Args:
+        repo_path: Path to the git repository
+        commit_hash: The hash of the commit to push (can be full or abbreviated)
+        remote: Name of the remote to push to (default: "origin")
+        branch: Branch to push to (default: current branch)
+    """
+    try:
+        repo = validate_repo(repo_path)
+        
+        # Check if remote exists
+        if remote not in [r.name for r in repo.remotes]:
+            return f"Error: Remote '{remote}' does not exist"
+        
+        # Validate the commit hash
+        try:
+            commit = repo.commit(commit_hash)
+            short_hash = commit.hexsha[:7]  # Get abbreviated hash for display
+        except Exception as e:
+            return f"Error: Invalid commit hash '{commit_hash}': {str(e)}"
+        
+        # Get the branch to push
+        if branch is None:
+            branch = repo.active_branch.name
+            
+        # Construct the push command for the specific commit
+        # Format: git push <remote> <commit-hash>:<branch>
+        push_spec = f"{commit.hexsha}:{branch}"
+        
+        # Execute the push command
+        output = repo.git.push(remote, push_spec)
+        return f"Successfully pushed commit {short_hash} to {remote}/{branch}\n{output}"
+    except Exception as e:
+        logger.error(f"Error in git_push_commit: {e}")
+        return f"Error pushing commit: {str(e)}"
+
+
 if __name__ == "__main__":
     logger.info("Starting agent-git MCP server")
     # This will start the FastMCP server
