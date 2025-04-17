@@ -1,0 +1,13 @@
+[project]
+name = "agent-git"
+version = "0.1.0"
+description = "Git functionality for MCP agents"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.6.0",
+    "click>=8.1.7",
+    "gitpython>=3.1.43",
+    "pydantic>=2.0.0",
+]
+
