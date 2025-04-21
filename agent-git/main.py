@@ -10,7 +10,9 @@ import git
 from mcp.server.fastmcp import FastMCP
 
 # Set up basic logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("agent-git")
 
 # Create the MCP server (namespace "agent-git")
@@ -19,26 +21,26 @@ mcp = FastMCP("agent-git")
 
 def validate_repo(repo_path: str) -> git.Repo:
     """Validate and return a git.Repo object.
-    
+
     Args:
         repo_path: Path to the git repository
-        
+
     Returns:
         git.Repo object
-        
+
     Raises:
         ValueError: If repo_path is invalid or doesn't exist
         git.InvalidGitRepositoryError: If the path is not a valid git repository
     """
     if not repo_path:
         raise ValueError("Repository path cannot be empty")
-        
-    path = Path(repo_path)
+
+    path = Path(repo_path).expanduser().resolve()
     if not path.exists():
         raise ValueError(f"Repository path does not exist: {repo_path}")
-        
+
     try:
-        return git.Repo(repo_path)
+        return git.Repo(repo_path, search_parent_directories=True)
     except git.InvalidGitRepositoryError:
         logger.error(f"Invalid git repository: {repo_path}")
         raise
@@ -142,7 +144,7 @@ def git_create_branch(
         # Check if branch already exists
         if branch_name in repo.heads:
             return f"Branch '{branch_name}' already exists"
-            
+
         base = repo.refs[base_branch] if base_branch else repo.active_branch
         repo.create_head(branch_name, base)
         return f"Created branch '{branch_name}' from '{base.name}'"
@@ -159,7 +161,7 @@ def git_checkout(repo_path: str, branch_name: str) -> str:
         # Check if branch exists
         if branch_name not in repo.heads and branch_name != "HEAD":
             return f"Error: Branch '{branch_name}' does not exist"
-            
+
         repo.git.checkout(branch_name)
         return f"Switched to branch '{branch_name}'"
     except Exception as e:
@@ -169,15 +171,15 @@ def git_checkout(repo_path: str, branch_name: str) -> str:
 
 @mcp.tool()
 def git_commit_direct(
-    repo_path: str, 
-    message: str, 
-    agent_name: str = "Claude", 
-    user_name: str = "Andor", 
+    repo_path: str,
+    message: str,
+    agent_name: str = "Claude",
+    user_name: str = "Andor",
     user_email: str = "andor@andor.us",
-    custom_name_format: Optional[str] = None
+    custom_name_format: Optional[str] = None,
 ) -> str:
-    """Record changes with a commit. 
-    
+    """Record changes with a commit.
+
     Args:
         repo_path: Path to the git repository
         message: Commit message (must start with "[agent]")
@@ -188,32 +190,39 @@ def git_commit_direct(
     """
     try:
         validate_repo(repo_path)
-        
+
         if not message.startswith("[agent]"):
             raise ValueError("Commit message must start with '[agent]'.")
-        
+
         # Set author and committer information
         agent_email = user_email
-        
+
         # Use custom format if provided, otherwise use default
         if custom_name_format:
             # Ensure the custom format includes both agent_name and user_name
-            if "{agent_name}" not in custom_name_format or "{user_name}" not in custom_name_format:
-                raise ValueError("Custom name format must include {agent_name} and {user_name}")
-            agent_full_name = custom_name_format.format(agent_name=agent_name, user_name=user_name)
+            if (
+                "{agent_name}" not in custom_name_format
+                or "{user_name}" not in custom_name_format
+            ):
+                raise ValueError(
+                    "Custom name format must include {agent_name} and {user_name}"
+                )
+            agent_full_name = custom_name_format.format(
+                agent_name=agent_name, user_name=user_name
+            )
         else:
             # Default format
             agent_full_name = f"{agent_name} Agent on behalf of {user_name}"
-        
+
         logger.info(f"Committing as: {agent_full_name}")
-        
+
         # Create environment variables for git
         env = os.environ.copy()
         env["GIT_AUTHOR_NAME"] = agent_full_name
         env["GIT_AUTHOR_EMAIL"] = agent_email
         env["GIT_COMMITTER_NAME"] = agent_full_name
         env["GIT_COMMITTER_EMAIL"] = agent_email
-        
+
         # Run git commit directly as a subprocess
         result = subprocess.run(
             ["git", "-C", repo_path, "commit", "-m", message],
@@ -221,18 +230,18 @@ def git_commit_direct(
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
-        
+
         # Get the commit hash using git rev-parse
         hash_result = subprocess.run(
             ["git", "-C", repo_path, "rev-parse", "HEAD"],
             check=True,
             stdout=subprocess.PIPE,
-            text=True
+            text=True,
         )
         commit_hash = hash_result.stdout.strip()
-        
+
         return f"Changes committed successfully with hash {commit_hash} (as '{agent_full_name}')"
     except subprocess.CalledProcessError as e:
         logger.error(f"Commit failed: {e.stderr}")
@@ -244,15 +253,15 @@ def git_commit_direct(
 
 @mcp.tool()
 def git_commit(
-    repo_path: str, 
-    message: str, 
-    agent_name: str = "Claude", 
-    user_name: str = "Andor", 
+    repo_path: str,
+    message: str,
+    agent_name: str = "Claude",
+    user_name: str = "Andor",
     user_email: str = "andor@andor.us",
-    custom_name_format: Optional[str] = None
+    custom_name_format: Optional[str] = None,
 ) -> str:
     """Record changes with a commit (redirect to git_commit_direct).
-    
+
     Args:
         repo_path: Path to the git repository
         message: Commit message (must start with "[agent]")
@@ -261,7 +270,9 @@ def git_commit(
         user_email: Email to use for the commit (default: "andor@andor.us")
         custom_name_format: Optional custom format for committer name (must include {agent_name} and {user_name})
     """
-    return git_commit_direct(repo_path, message, agent_name, user_name, user_email, custom_name_format)
+    return git_commit_direct(
+        repo_path, message, agent_name, user_name, user_email, custom_name_format
+    )
 
 
 @mcp.tool()
@@ -299,7 +310,7 @@ def git_init(repo_path: str) -> str:
             # Check if .git directory already exists
             if (path / ".git").exists():
                 return f"Repository already initialized at {repo_path}"
-                
+
         r = git.Repo.init(path=repo_path, mkdir=True)
         return f"Initialized empty Git repository in {r.git_dir}"
     except Exception as e:
@@ -310,7 +321,7 @@ def git_init(repo_path: str) -> str:
 @mcp.tool()
 def git_remote_add(repo_path: str, name: str, url: str) -> str:
     """Add a remote to the repository.
-    
+
     Args:
         repo_path: Path to the git repository
         name: Name of the remote (e.g. "origin")
@@ -318,12 +329,12 @@ def git_remote_add(repo_path: str, name: str, url: str) -> str:
     """
     try:
         repo = validate_repo(repo_path)
-        
+
         # Check if remote already exists
         for remote in repo.remotes:
             if remote.name == name:
                 return f"Remote '{name}' already exists"
-                
+
         repo.create_remote(name, url)
         return f"Added remote '{name}' with URL '{url}'"
     except Exception as e:
@@ -332,9 +343,14 @@ def git_remote_add(repo_path: str, name: str, url: str) -> str:
 
 
 @mcp.tool()
-def git_push(repo_path: str, remote: str = "origin", branch: Optional[str] = None, force: bool = False) -> str:
+def git_push(
+    repo_path: str,
+    remote: str = "origin",
+    branch: Optional[str] = None,
+    force: bool = False,
+) -> str:
     """Push changes to remote repository.
-    
+
     Args:
         repo_path: Path to the git repository
         remote: Name of the remote to push to (default: "origin")
@@ -343,21 +359,21 @@ def git_push(repo_path: str, remote: str = "origin", branch: Optional[str] = Non
     """
     try:
         repo = validate_repo(repo_path)
-        
+
         # Check if remote exists
         if remote not in [r.name for r in repo.remotes]:
             return f"Error: Remote '{remote}' does not exist"
-            
+
         # Get the branch to push
         if branch is None:
             branch = repo.active_branch.name
-            
+
         # Construct the push command with appropriate options
         push_command = ["push"]
         if force:
             push_command.append("--force")
         push_command.extend([remote, branch])
-        
+
         output = repo.git.execute(["git"] + push_command)
         return f"Push successful: {output}"
     except Exception as e:
@@ -366,9 +382,14 @@ def git_push(repo_path: str, remote: str = "origin", branch: Optional[str] = Non
 
 
 @mcp.tool()
-def git_push_commit(repo_path: str, commit_hash: str, remote: str = "origin", branch: Optional[str] = None) -> str:
+def git_push_commit(
+    repo_path: str,
+    commit_hash: str,
+    remote: str = "origin",
+    branch: Optional[str] = None,
+) -> str:
     """Push a specific commit to remote repository.
-    
+
     Args:
         repo_path: Path to the git repository
         commit_hash: The hash of the commit to push (can be full or abbreviated)
@@ -377,26 +398,26 @@ def git_push_commit(repo_path: str, commit_hash: str, remote: str = "origin", br
     """
     try:
         repo = validate_repo(repo_path)
-        
+
         # Check if remote exists
         if remote not in [r.name for r in repo.remotes]:
             return f"Error: Remote '{remote}' does not exist"
-        
+
         # Validate the commit hash
         try:
             commit = repo.commit(commit_hash)
             short_hash = commit.hexsha[:7]  # Get abbreviated hash for display
         except Exception as e:
             return f"Error: Invalid commit hash '{commit_hash}': {str(e)}"
-        
+
         # Get the branch to push
         if branch is None:
             branch = repo.active_branch.name
-            
+
         # Construct the push command for the specific commit
         # Format: git push <remote> <commit-hash>:<branch>
         push_spec = f"{commit.hexsha}:{branch}"
-        
+
         # Execute the push command
         output = repo.git.push(remote, push_spec)
         return f"Successfully pushed commit {short_hash} to {remote}/{branch}\n{output}"
