@@ -1,6 +1,16 @@
 # Agent-Git MCP Server
 
-A MCP (Machine Collaboration Protocol) server that provides Git functionality for AI agents. This server enables AI agents to perform Git operations through a standardized API.
+A MCP (Machine Collaboration Protocol) server that provides Git functionality for AI agents. This server enables AI agents to perform Git operations through a standardized API. The difference between this an the https://github.com/modelcontextprotocol/servers/tree/main/src/git/src/mcp_server_git is that it signs using a particular format that specifies it's from an agent:
+
+**Example:**
+```
+Commit: 42118bba8538b6c046dea9c08821e570bc8d73e4
+Author: Claude Agent on behalf of Andor <andor@andor.us>
+Committer: Claude Agent on behalf of Andor <andor@andor.us>
+Date: Wed Apr 16 23:21:23 2025 -0700
+Message: [agent] Add custom committer name format functionality
+```
+This allows you to verify which commits were done by an agent and which were done by you. 
 
 ## Features
 
